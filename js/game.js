@@ -6,7 +6,7 @@ let keyW;
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: 800,
+  width: 895,
   heigth: 640,
   scale: {
     mode: Phaser.Scale.RESIZE,
@@ -39,7 +39,7 @@ function preload() {
   // load the Spike image separately for Phaser 3 to render it
   this.load.image('spike', 'assets/images/spike.png');
   // Load the export Tiled JSON
-  this.load.tilemapTiledJSON('map', 'assets/tilemaps/level1.json');
+  this.load.tilemapTiledJSON('map', 'assets/tilemaps/level3.json');
   // Load player animations from the player spritesheet and atlas JSON
   this.load.atlas('player', 'assets/images/kenney_player.png',
     'assets/images/kenney_player_atlas.json');
@@ -121,7 +121,7 @@ function create() {
     // By default the sprite has loads of whitespace from the base image, we
     // resize the sprite to reduce the amount of whitespace used by the sprite
     // so collisions can be more precise
-    spikeSprite.body.setSize(spike.width, spike.height - 20).setOffset(0, 20);
+    spikeSprite.body.setSize(spike.width, spike.height - 20).setOffset(0, 60);
   });
 
   // Add collision between the player and the spikes
