@@ -1,3 +1,8 @@
+let keyA;
+let keyS;
+let keyD;
+let keyW;
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
@@ -41,6 +46,10 @@ function preload() {
 }
 
 function create() {
+  keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+  keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+  keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+  keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
   // Create a tile map, which is used to bring our level in Tiled
   // to our game world in Phaser
   const map = this.make.tilemap({ key: 'map' });
@@ -121,12 +130,12 @@ function create() {
 
 function update() {
   // Control the player with left or right keys
-  if (this.cursors.left.isDown) {
+  if (this.cursors.left.isDown || keyA.isDown) {
     this.player.setVelocityX(-200);
     if (this.player.body.onFloor()) {
       this.player.play('walk', true);
     }
-  } else if (this.cursors.right.isDown) {
+  } else if (this.cursors.right.isDown || keyD.isDown) {
     this.player.setVelocityX(200);
     if (this.player.body.onFloor()) {
       this.player.play('walk', true);
