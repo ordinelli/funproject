@@ -89,13 +89,14 @@ function preload ()
   this.load.spritesheet('player_handgun', 'assets/sprites/player_handgun.png',
       { frameWidth: 66, frameHeight: 60 }
   ); // Made by tokkatrain: https://tokkatrain.itch.io/top-down-basic-set
-  this.load.image('bullet', 'assets/sprites/bullets/bullet6.png');
-  this.load.image('target', 'assets/demoscene/ball.png');
-  this.load.image('background', 'assets/skies/underwater1.png');
+  this.load.image('bullet', 'assets/sprites/bullet7.png');
+  this.load.image('target', 'assets/sprites/ball-tlb.png');
+  this.load.image('background', 'assets/sprites/cavern1.png');
 }
 
 function create ()
 {
+
   // Set world bounds
   this.physics.world.setBounds(0, 0, 1600, 1200);
 
@@ -108,9 +109,9 @@ function create ()
   player = this.physics.add.sprite(800, 600, 'player_handgun');
   enemy = this.physics.add.sprite(300, 600, 'player_handgun');
   reticle = this.physics.add.sprite(800, 700, 'target');
-  hp1 = this.add.image(-350, -250, 'target').setScrollFactor(0.5, 0.5);
-  hp2 = this.add.image(-300, -250, 'target').setScrollFactor(0.5, 0.5);
-  hp3 = this.add.image(-250, -250, 'target').setScrollFactor(0.5, 0.5);
+  hp1 = this.add.image(0, 0, 'target').setScrollFactor(0.5, 0.5);
+  hp2 = this.add.image(0, 0, 'target').setScrollFactor(0.5, 0.5);
+  hp3 = this.add.image(0, 0, 'target').setScrollFactor(0, 0);
 
   // Set image/sprite properties
   background.setOrigin(0.5, 0.5).setDisplaySize(1600, 1200);
@@ -120,6 +121,7 @@ function create ()
   hp1.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
   hp2.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
   hp3.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
+  hp1.setScrollFactor(0);
 
   // Set sprite variables
   player.health = 3;
@@ -225,7 +227,6 @@ function enemyHitCallback(enemyHit, bulletHit)
       bulletHit.setActive(false).setVisible(false);
   }
 }
-
 function playerHitCallback(playerHit, bulletHit)
 {
   // Reduce health of player
@@ -238,15 +239,18 @@ function playerHitCallback(playerHit, bulletHit)
       if (playerHit.health == 2)
       {
           hp3.destroy();
+          document.getElementById("healthleft").innerHTML = "2";
       }
       else if (playerHit.health == 1)
       {
           hp2.destroy();
+          document.getElementById("healthleft").innerHTML = "1";
       }
       else
       {
           hp1.destroy();
           // Game over state should execute here
+          document.getElementById("healthleft").innerHTML = "GAME OVER - YOU DIED";
       }
 
       // Destroy bullet
@@ -336,4 +340,14 @@ function update (time, delta)
 
   // Make enemy fire
   enemyFire(enemy, player, time, this);
+}
+
+function render () {
+
+    game.debug.text(game.time.suggestedFps, 32, 32);
+
+    // game.debug.text(game.time.physicsElapsed, 32, 32);
+    // game.debug.body(player);
+    // game.debug.bodyInfo(player, 16, 24);
+
 }
