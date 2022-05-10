@@ -92,6 +92,7 @@ function preload ()
   this.load.image('bullet', 'assets/sprites/bullet7.png');
   this.load.image('target', 'assets/sprites/ball-tlb.png');
   this.load.image('crosshair', 'assets/sprites/crosshair.png');
+  this.load.image('cursor', 'assets/sprites/cursor.png');
   this.load.image('background', 'assets/sprites/cavern1.png');
 }
 
@@ -109,6 +110,7 @@ function create ()
   player = this.physics.add.sprite(800, 600, 'player_handgun');
   enemy = this.physics.add.sprite(300, 600, 'player_handgun');
   reticle = this.physics.add.sprite(800, 700, 'crosshair');
+  cursor = this.physics.add.sprite(800, 700, 'cursor');
   hp1 = this.add.image(-175, -250, 'target').setScrollFactor(0.5, 0.5);
   hp2 = this.add.image(-115, -250, 'target').setScrollFactor(0.5, 0.5);
   hp3 = this.add.image(-55, -250, 'target').setScrollFactor(0.5, 0.5);
@@ -117,6 +119,7 @@ function create ()
   player.setOrigin(0.5, 0.5).setDisplaySize(132, 120).setCollideWorldBounds(true).setDrag(500, 500);
   enemy.setOrigin(0.5, 0.5).setDisplaySize(132, 120).setCollideWorldBounds(true);
   reticle.setOrigin(0.5, 0.5).setDisplaySize(25, 25).setCollideWorldBounds(true);
+  cursor.setOrigin(0.5, 0.5).setDisplaySize(25, 25).setCollideWorldBounds(true).setVisible(false);
   hp1.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
   hp2.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
   hp3.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
@@ -208,6 +211,8 @@ function create ()
       {
           reticle.x += pointer.movementX;
           reticle.y += pointer.movementY;
+          cursor.x += pointer.movementX;
+          cursor.y += pointer.movementY;
       }
   }, this);
 
@@ -225,7 +230,6 @@ function enemyHitCallback(enemyHit, bulletHit)
       if (enemyHit.health <= 0)
       {
          enemyHit.setActive(false).setVisible(false);
-         
       }
 
       // Destroy bullet
@@ -254,6 +258,10 @@ function playerHitCallback(playerHit, bulletHit)
       {
           hp1.destroy();
           // Game over state should execute here
+          player.setActive(false).setVisible(false);
+          enemy.setActive(false).setVisible(false);
+          reticle.setActive(false).setVisible(false);
+          cursor.setVisible(true);
       }
 
       // Destroy bullet
