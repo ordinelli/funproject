@@ -1,192 +1,339 @@
-let keyA;
-let keyS;
-let keyD;
-let keyW;
-
-const config = {
+var config = {
   type: Phaser.AUTO,
-  parent: 'game',
-  width: 895,
-  heigth: 640,
-  scale: {
-    mode: Phaser.Scale.RESIZE,
-    autoCenter: Phaser.Scale.CENTER_BOTH
-  },
-  scene: {
-    preload,
-    create,
-    update,
-  },
+  parent: 'phaser-example',
+  width: 800,
+  height: 600,
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 500 },
-    },
+      gravity: { y: 0 },
+      debug: false
+    }
+  },
+  scene: {
+      preload: preload,
+      create: create,
+      update: update,
+      extend: {
+                  player: null,
+                  healthpoints: null,
+                  reticle: null,
+                  moveKeys: null,
+                  playerBullets: null,
+                  enemyBullets: null,
+                  time: 0,
+              }
   }
-
 };
 
-const game = new Phaser.Game(config);
+var game = new Phaser.Game(config);
 
-function preload() {
-  // Image layers from Tiled can't be exported to Phaser 3 (as yet)
-  // So we add the background image separately
-  this.load.image('background', 'assets/images/background.png');
-  // Load the tileset image file, needed for the map to know what
-  // tiles to draw on the screen
-  this.load.image('tiles', 'assets/tilesets/platformPack_tilesheet.png');
-  // Even though we load the tilesheet with the spike image, we need to
-  // load the Spike image separately for Phaser 3 to render it
-  this.load.image('spike', 'assets/images/spike.png');
-  // Load the export Tiled JSON
-  this.load.tilemapTiledJSON('map', 'assets/tilemaps/level3.json');
-  // Load player animations from the player spritesheet and atlas JSON
-  this.load.atlas('player', 'assets/images/kenney_player.png',
-    'assets/images/kenney_player_atlas.json');
-}
+var Bullet = new Phaser.Class({
 
-function create() {
-  keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-  keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
-  keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-  keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-  // Create a tile map, which is used to bring our level in Tiled
-  // to our game world in Phaser
-  const map = this.make.tilemap({ key: 'map' });
-  // Add the tileset to the map so the images would load correctly in Phaser
-  const tileset = map.addTilesetImage('kenney_simple_platformer', 'tiles');
-  // Place the background image in our game world
-  const backgroundImage = this.add.image(0, 0, 'background').setOrigin(0, 0);
-  // Scale the image to better match our game's resolution
-  backgroundImage.setScale(2, 0.8);
-  // Add the platform layer as a static group, the player would be able
-  // to jump on platforms like world collisions but they shouldn't move
-  const platforms = map.createStaticLayer('Platforms', tileset, 0, 200);
-  // There are many ways to set collision between tiles and players
-  // As we want players to collide with all of the platforms, we tell Phaser to
-  // set collisions for every tile in our platform layer whose index isn't -1.
-  // Tiled indices can only be >= 0, therefore we are colliding with all of
-  // the platform layer
-  platforms.setCollisionByExclusion(-1, true);
+  Extends: Phaser.GameObjects.Image,
 
-  // Add the player to the game world
-  this.player = this.physics.add.sprite(50, 300, 'player');
-  this.player.setBounce(0.1); // our player will bounce from items
-  this.player.setCollideWorldBounds(true); // don't go out of the map
-  this.physics.add.collider(this.player, platforms);
+  initialize:
 
-  // Create the walking animation using the last 2 frames of
-  // the atlas' first row
-  this.anims.create({
-    key: 'walk',
-    frames: this.anims.generateFrameNames('player', {
-      prefix: 'robo_player_',
-      start: 2,
-      end: 3,
-    }),
-    frameRate: 10,
-    repeat: -1
-  });
+  // Bullet Constructor
+  function Bullet (scene)
+  {
+      Phaser.GameObjects.Image.call(this, scene, 0, 0, 'bullet');
+      this.speed = 1;
+      this.born = 0;
+      this.direction = 0;
+      this.xSpeed = 0;
+      this.ySpeed = 0;
+      this.setSize(12, 12, true);
+  },
 
-  // Create an idle animation i.e the first frame
-  this.anims.create({
-    key: 'idle',
-    frames: [{ key: 'player', frame: 'robo_player_0' }],
-    frameRate: 10,
-  });
+  // Fires a bullet from the player to the reticle
+  fire: function (shooter, target)
+  {
+      this.setPosition(shooter.x, shooter.y); // Initial position
+      this.direction = Math.atan( (target.x-this.x) / (target.y-this.y));
 
-  // Use the second frame of the atlas for jumping
-  this.anims.create({
-    key: 'jump',
-    frames: [{ key: 'player', frame: 'robo_player_1' }],
-    frameRate: 10,
-  });
+      // Calculate X and y velocity of bullet to moves it from shooter to target
+      if (target.y >= this.y)
+      {
+          this.xSpeed = this.speed*Math.sin(this.direction);
+          this.ySpeed = this.speed*Math.cos(this.direction);
+      }
+      else
+      {
+          this.xSpeed = -this.speed*Math.sin(this.direction);
+          this.ySpeed = -this.speed*Math.cos(this.direction);
+      }
 
-  // Enable user input via cursor keys
-  this.cursors = this.input.keyboard.createCursorKeys();
+      this.rotation = shooter.rotation; // angle bullet with shooters rotation
+      this.born = 0; // Time since new bullet spawned
+  },
 
-  // Create a sprite group for all spikes, set common properties to ensure that
-  // sprites in the group don't move via gravity or by player collisions
-  this.spikes = this.physics.add.group({
-    allowGravity: false,
-    immovable: true
-  });
-
-  // Get the spikes from the object layer of our Tiled map. Phaser has a
-  // createFromObjects function to do so, but it creates sprites automatically
-  // for us. We want to manipulate the sprites a bit before we use them
-  map.getObjectLayer('Spikes').objects.forEach((spike) => {
-    // Add new spikes to our sprite group
-    const spikeSprite = this.spikes.create(spike.x, spike.y + 200 - spike.height, 'spike').setOrigin(0);
-    // By default the sprite has loads of whitespace from the base image, we
-    // resize the sprite to reduce the amount of whitespace used by the sprite
-    // so collisions can be more precise
-    spikeSprite.body.setSize(spike.width, spike.height - 20).setOffset(0, 60);
-  });
-
-  // Add collision between the player and the spikes
-  this.physics.add.collider(this.player, this.spikes, playerHit, null, this);
-}
-
-function update() {
-  // Control the player with left or right keys
-  if (this.cursors.left.isDown || keyA.isDown) {
-    this.player.setVelocityX(-200);
-    if (this.player.body.onFloor()) {
-      this.player.play('walk', true);
-    }
-  } else if (this.cursors.right.isDown || keyD.isDown) {
-    this.player.setVelocityX(200);
-    if (this.player.body.onFloor()) {
-      this.player.play('walk', true);
-    }
-  } else {
-    // If no keys are pressed, the player keeps still
-    this.player.setVelocityX(0);
-    // Only show the idle animation if the player is footed
-    // If this is not included, the player would look idle while jumping
-    if (this.player.body.onFloor()) {
-      this.player.play('idle', true);
-    }
+  // Updates the position of the bullet each cycle
+  update: function (time, delta)
+  {
+      this.x += this.xSpeed * delta;
+      this.y += this.ySpeed * delta;
+      this.born += delta;
+      if (this.born > 1800)
+      {
+          this.setActive(false);
+          this.setVisible(false);
+      }
   }
 
-  // Player can jump while walking any direction by pressing the space bar
-  // or the 'UP' arrow
-  if ((this.cursors.space.isDown || this.cursors.up.isDown) && this.player.body.onFloor()) {
-    this.player.setVelocityY(-350);
-    this.player.play('jump', true);
-  }
+});
 
-  // If the player is moving to the right, keep them facing forward
-  if (this.player.body.velocity.x > 0) {
-    this.player.setFlipX(false);
-  } else if (this.player.body.velocity.x < 0) {
-    // otherwise, make them face the other side
-    this.player.setFlipX(true);
+function preload ()
+{
+  // Load in images and sprites
+  this.load.spritesheet('player_handgun', 'assets/sprites/player_handgun.png',
+      { frameWidth: 66, frameHeight: 60 }
+  ); // Made by tokkatrain: https://tokkatrain.itch.io/top-down-basic-set
+  this.load.image('bullet', 'assets/sprites/bullets/bullet6.png');
+  this.load.image('target', 'assets/demoscene/ball.png');
+  this.load.image('background', 'assets/skies/underwater1.png');
+}
+
+function create ()
+{
+  // Set world bounds
+  this.physics.world.setBounds(0, 0, 1600, 1200);
+
+  // Add 2 groups for Bullet objects
+  playerBullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
+  enemyBullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
+
+  // Add background player, enemy, reticle, healthpoint sprites
+  var background = this.add.image(800, 600, 'background');
+  player = this.physics.add.sprite(800, 600, 'player_handgun');
+  enemy = this.physics.add.sprite(300, 600, 'player_handgun');
+  reticle = this.physics.add.sprite(800, 700, 'target');
+  hp1 = this.add.image(-350, -250, 'target').setScrollFactor(0.5, 0.5);
+  hp2 = this.add.image(-300, -250, 'target').setScrollFactor(0.5, 0.5);
+  hp3 = this.add.image(-250, -250, 'target').setScrollFactor(0.5, 0.5);
+
+  // Set image/sprite properties
+  background.setOrigin(0.5, 0.5).setDisplaySize(1600, 1200);
+  player.setOrigin(0.5, 0.5).setDisplaySize(132, 120).setCollideWorldBounds(true).setDrag(500, 500);
+  enemy.setOrigin(0.5, 0.5).setDisplaySize(132, 120).setCollideWorldBounds(true);
+  reticle.setOrigin(0.5, 0.5).setDisplaySize(25, 25).setCollideWorldBounds(true);
+  hp1.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
+  hp2.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
+  hp3.setOrigin(0.5, 0.5).setDisplaySize(50, 50);
+
+  // Set sprite variables
+  player.health = 3;
+  enemy.health = 3;
+  enemy.lastFired = 0;
+
+  // Set camera properties
+  this.cameras.main.zoom = 0.5;
+  this.cameras.main.startFollow(player);
+
+  // Creates object for input with WASD kets
+  moveKeys = this.input.keyboard.addKeys({
+      'up': Phaser.Input.Keyboard.KeyCodes.W,
+      'down': Phaser.Input.Keyboard.KeyCodes.S,
+      'left': Phaser.Input.Keyboard.KeyCodes.A,
+      'right': Phaser.Input.Keyboard.KeyCodes.D
+  });
+
+  // Enables movement of player with WASD keys
+  this.input.keyboard.on('keydown-W', function (event) {
+      player.setAccelerationY(-800);
+  });
+  this.input.keyboard.on('keydown-S', function (event) {
+      player.setAccelerationY(800);
+  });
+  this.input.keyboard.on('keydown-A', function (event) {
+      player.setAccelerationX(-800);
+  });
+  this.input.keyboard.on('keydown-D', function (event) {
+      player.setAccelerationX(800);
+  });
+
+  // Stops player acceleration on uppress of WASD keys
+  this.input.keyboard.on('keyup-W', function (event) {
+      if (moveKeys['down'].isUp)
+          player.setAccelerationY(0);
+  });
+  this.input.keyboard.on('keyup-S', function (event) {
+      if (moveKeys['up'].isUp)
+          player.setAccelerationY(0);
+  });
+  this.input.keyboard.on('keyup-A', function (event) {
+      if (moveKeys['right'].isUp)
+          player.setAccelerationX(0);
+  });
+  this.input.keyboard.on('keyup-D', function (event) {
+      if (moveKeys['left'].isUp)
+          player.setAccelerationX(0);
+  });
+
+  // Fires bullet from player on left click of mouse
+  this.input.on('pointerdown', function (pointer, time, lastFired) {
+      if (player.active === false)
+          return;
+
+      // Get bullet from bullets group
+      var bullet = playerBullets.get().setActive(true).setVisible(true);
+
+      if (bullet)
+      {
+          bullet.fire(player, reticle);
+          this.physics.add.collider(enemy, bullet, enemyHitCallback);
+      }
+  }, this);
+
+  // Pointer lock will only work after mousedown
+  game.canvas.addEventListener('mousedown', function () {
+      game.input.mouse.requestPointerLock();
+  });
+
+  // Exit pointer lock when Q or escape (by default) is pressed.
+  this.input.keyboard.on('keydown_Q', function (event) {
+      if (game.input.mouse.locked)
+          game.input.mouse.releasePointerLock();
+  }, 0, this);
+
+  // Move reticle upon locked pointer move
+  this.input.on('pointermove', function (pointer) {
+      if (this.input.mouse.locked)
+      {
+          reticle.x += pointer.movementX;
+          reticle.y += pointer.movementY;
+      }
+  }, this);
+
+}
+
+function enemyHitCallback(enemyHit, bulletHit)
+{
+  // Reduce health of enemy
+  if (bulletHit.active === true && enemyHit.active === true)
+  {
+      enemyHit.health = enemyHit.health - 1;
+      console.log("Enemy hp: ", enemyHit.health);
+
+      // Kill enemy if health <= 0
+      if (enemyHit.health <= 0)
+      {
+         enemyHit.setActive(false).setVisible(false);
+      }
+
+      // Destroy bullet
+      bulletHit.setActive(false).setVisible(false);
   }
 }
 
-/**
- * playerHit resets the player's state when it dies from colliding with a spike
- * @param {*} player - player sprite
- * @param {*} spike - spike player collided with
- */
-function playerHit(player, spike) {
-  // Set velocity back to 0
-  player.setVelocity(0, 0);
-  // Put the player back in its original position
-  player.setX(50);
-  player.setY(300);
-  // Use the default `idle` animation
-  player.play('idle', true);
-  // Set the visibility to 0 i.e. hide the player
-  player.setAlpha(0);
-  // Add a tween that 'blinks' until the player is gradually visible
-  let tw = this.tweens.add({
-    targets: player,
-    alpha: 1,
-    duration: 100,
-    ease: 'Linear',
-    repeat: 5,
-  });
+function playerHitCallback(playerHit, bulletHit)
+{
+  // Reduce health of player
+  if (bulletHit.active === true && playerHit.active === true)
+  {
+      playerHit.health = playerHit.health - 1;
+      console.log("Player hp: ", playerHit.health);
+
+      // Kill hp sprites and kill player if health <= 0
+      if (playerHit.health == 2)
+      {
+          hp3.destroy();
+      }
+      else if (playerHit.health == 1)
+      {
+          hp2.destroy();
+      }
+      else
+      {
+          hp1.destroy();
+          // Game over state should execute here
+      }
+
+      // Destroy bullet
+      bulletHit.setActive(false).setVisible(false);
+  }
+}
+
+function enemyFire(enemy, player, time, gameObject)
+{
+  if (enemy.active === false)
+  {
+      return;
+  }
+
+  if ((time - enemy.lastFired) > 1000)
+  {
+      enemy.lastFired = time;
+
+      // Get bullet from bullets group
+      var bullet = enemyBullets.get().setActive(true).setVisible(true);
+
+      if (bullet)
+      {
+          bullet.fire(enemy, player);
+          // Add collider between bullet and player
+          gameObject.physics.add.collider(player, bullet, playerHitCallback);
+      }
+  }
+}
+
+// Ensures sprite speed doesnt exceed maxVelocity while update is called
+function constrainVelocity(sprite, maxVelocity)
+{
+  if (!sprite || !sprite.body)
+    return;
+
+  var angle, currVelocitySqr, vx, vy;
+  vx = sprite.body.velocity.x;
+  vy = sprite.body.velocity.y;
+  currVelocitySqr = vx * vx + vy * vy;
+
+  if (currVelocitySqr > maxVelocity * maxVelocity)
+  {
+      angle = Math.atan2(vy, vx);
+      vx = Math.cos(angle) * maxVelocity;
+      vy = Math.sin(angle) * maxVelocity;
+      sprite.body.velocity.x = vx;
+      sprite.body.velocity.y = vy;
+  }
+}
+
+// Ensures reticle does not move offscreen
+function constrainReticle(reticle)
+{
+  var distX = reticle.x-player.x; // X distance between player & reticle
+  var distY = reticle.y-player.y; // Y distance between player & reticle
+
+  // Ensures reticle cannot be moved offscreen (player follow)
+  if (distX > 800)
+      reticle.x = player.x+800;
+  else if (distX < -800)
+      reticle.x = player.x-800;
+
+  if (distY > 600)
+      reticle.y = player.y+600;
+  else if (distY < -600)
+      reticle.y = player.y-600;
+}
+
+function update (time, delta)
+{
+  // Rotates player to face towards reticle
+  player.rotation = Phaser.Math.Angle.Between(player.x, player.y, reticle.x, reticle.y);
+
+  // Rotates enemy to face towards player
+  enemy.rotation = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
+
+  //Make reticle move with player
+  reticle.body.velocity.x = player.body.velocity.x;
+  reticle.body.velocity.y = player.body.velocity.y;
+
+  // Constrain velocity of player
+  constrainVelocity(player, 500);
+
+  // Constrain position of constrainReticle
+  constrainReticle(reticle);
+
+  // Make enemy fire
+  enemyFire(enemy, player, time, this);
 }
