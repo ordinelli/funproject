@@ -28,6 +28,8 @@ var config = {
 
 var game = new Phaser.Game(config);
 var gameOver = false;
+var enemiesKilled = 0;
+var enemyiesKilledText;
 
 var Bullet = new Phaser.Class({
 
@@ -94,7 +96,7 @@ function preload ()
   this.load.image('target', 'assets/sprites/ball-tlb.png');
   this.load.image('crosshair', 'assets/sprites/crosshair.png');
   this.load.image('cursor', 'assets/sprites/cursor.png');
-  this.load.image('background', 'assets/sprites/cavern1.png');
+  this.load.image('background', 'assets/images/background.png');
 }
 
 function create ()
@@ -131,6 +133,15 @@ function create ()
   livesLeftText = this.add.text(-300, -250, 'Lives Left:', { font: "35px Arial"},);
   livesLeftText.setScrollFactor(0);
   livesLeftText.setOrigin(0.5, 0.5);
+  count = 0;
+  enemiesKilled = this.add.text(-250, -175, 'Enemies Killed: ' + count, { font: "35px Arial"},);
+  enemiesKilled.setScrollFactor(0);
+  enemiesKilled.setOrigin(0.5, 0.5);
+  pauseText = this.add.text(1000, -250, 'Pause game', { font: "35px Arial"},);
+  pauseText.setScrollFactor(0);
+  pauseText.setOrigin(0.5, 0.5);
+  pauseText.setInteractive();
+  pauseText.on('pointerdown', () => { console.log('pointerover');});
 
   // Set sprite variables
   player.health = 3;
@@ -232,6 +243,14 @@ function enemyHitCallback(enemyHit, bulletHit)
       if (enemyHit.health <= 0)
       {
          enemyHit.setActive(false).setVisible(false);
+         enemy.setOrigin(0.5, 0.5).setDisplaySize(132, 120).setCollideWorldBounds(true);
+         enemy.x = Math.floor(Math.random() * (2000 - -500 + 1)) + -500;
+         enemy.y = Math.floor(Math.random() * (2000 - -2000 + 1)) + -2000;
+         console.log(enemy.x + " " + enemy.y);
+         enemyHit.health = 2;
+         enemyHit.setActive(true).setVisible(true);
+         count++;
+         enemiesKilled.setText('Enemies Killed: ' + count);
       }
 
       // Destroy bullet
@@ -269,6 +288,7 @@ function playerHitCallback(playerHit, bulletHit)
           gameOver = true;
           livesLeftText.setVisible(false);
           console.log("GAME OVER!");
+
       }
 
       // Destroy bullet
@@ -351,13 +371,10 @@ function update (time, delta)
     reticle.body.velocity.y = player.body.velocity.y;
     //Checking if the game is over in the update, if it is currently over then we disable the keyboard input to stop the player from moving
     if(gameOver){
-        this.input.keyboard.enabled = false;
+        // disable enable keyboard input this.input.keyboard.enabled = false;
+        gameOver = false;
+        this.scene.restart();
     }
-
-    
-
-
-
 
   // Constrain velocity of player
   constrainVelocity(player, 500);
