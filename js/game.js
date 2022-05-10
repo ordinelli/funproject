@@ -27,6 +27,7 @@ var config = {
 };
 
 var game = new Phaser.Game(config);
+var gameOver = false;
 
 var Bullet = new Phaser.Class({
 
@@ -106,6 +107,7 @@ function create ()
   enemyBullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
 
   // Add background player, enemy, reticle, healthpoint sprites
+
   var background = this.add.image(800, 600, 'background');
   player = this.physics.add.sprite(800, 600, 'player_handgun');
   enemy = this.physics.add.sprite(300, 600, 'player_handgun');
@@ -126,9 +128,9 @@ function create ()
   hp1.setScrollFactor(0);
   hp2.setScrollFactor(0);
   hp3.setScrollFactor(0);
-  text = this.add.text(-300, -250, 'Lives Left:', { font: "35px Arial"},);
-  text.setScrollFactor(0);
-  text.setOrigin(0.5, 0.5);
+  livesLeftText = this.add.text(-300, -250, 'Lives Left:', { font: "35px Arial"},);
+  livesLeftText.setScrollFactor(0);
+  livesLeftText.setOrigin(0.5, 0.5);
 
   // Set sprite variables
   player.health = 3;
@@ -187,7 +189,7 @@ function create ()
       // Get bullet from bullets group
       var bullet = playerBullets.get().setActive(true).setVisible(true);
 
-      if (bullet)
+      if (bullet && gameOver == false)
       {
           bullet.fire(player, reticle);
           this.physics.add.collider(enemy, bullet, enemyHitCallback);
@@ -256,12 +258,17 @@ function playerHitCallback(playerHit, bulletHit)
       }
       else
       {
-          hp1.destroy();
           // Game over state should execute here
-          player.setActive(false).setVisible(false);
-          enemy.setActive(false).setVisible(false);
-          reticle.setActive(false).setVisible(false);
+          hp1.destroy();
+          //Here we are setting the player and reticle to not visible any longer, and enabling the menu cursor as game is over.
           cursor.setVisible(true);
+          enemy.destroy();
+          player.setVisible(false);
+          bulletHit.setVisible(false);
+          reticle.setVisible(false);
+          gameOver = true;
+          livesLeftText.setVisible(false);
+          console.log("GAME OVER!");
       }
 
       // Destroy bullet
@@ -340,8 +347,17 @@ function update (time, delta)
   enemy.rotation = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
 
   //Make reticle move with player
-  reticle.body.velocity.x = player.body.velocity.x;
-  reticle.body.velocity.y = player.body.velocity.y;
+    reticle.body.velocity.x = player.body.velocity.x;
+    reticle.body.velocity.y = player.body.velocity.y;
+    //Checking if the game is over in the update, if it is currently over then we disable the keyboard input to stop the player from moving
+    if(gameOver){
+        this.input.keyboard.enabled = false;
+    }
+
+    
+
+
+
 
   // Constrain velocity of player
   constrainVelocity(player, 500);
