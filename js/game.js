@@ -137,11 +137,18 @@ function create ()
   enemiesKilled = this.add.text(-250, -175, 'Enemies Killed: ' + count, { font: "35px Arial"},);
   enemiesKilled.setScrollFactor(0);
   enemiesKilled.setOrigin(0.5, 0.5);
-  pauseText = this.add.text(1000, -250, 'Pause game', { font: "35px Arial"},);
+  
+  pauseText = this.add.text(400, 370, 'Restart game', { font: "45px Arial", color: '#3AF818'},);
   pauseText.setScrollFactor(0);
   pauseText.setOrigin(0.5, 0.5);
   pauseText.setInteractive();
+  pauseText.setVisible(false);
   pauseText.on('pointerdown', () => { console.log('pointerover');});
+
+  gameOverText = this.add.text(400, 300, 'GAME OVER', { font: "60px Arial", color: '#F40000',},);
+  gameOverText.setScrollFactor(0);
+  gameOverText.setOrigin(0.5, 0.5);
+  gameOverText.setVisible(false);
 
   // Set sprite variables
   player.health = 3;
@@ -303,21 +310,41 @@ function enemyFire(enemy, player, time, gameObject)
       return;
   }
 
-  if ((time - enemy.lastFired) > 1000)
-  {
-      enemy.lastFired = time;
-
-      // Get bullet from bullets group
-      var bullet = enemyBullets.get().setActive(true).setVisible(true);
-
-      if (bullet)
-      {
-          bullet.fire(enemy, player);
-          // Add collider between bullet and player
-          gameObject.physics.add.collider(player, bullet, playerHitCallback);
-      }
+  //Checking what the enemy kill count is equal to and setting the time for enemy to fire shorter, to shoot quicker.
+  if(count < 5){
+    if ((time - enemy.lastFired) > 1500)
+    {
+        enemy.lastFired = time;
+  
+        // Get bullet from bullets group
+        var bullet = enemyBullets.get().setActive(true).setVisible(true);
+  
+        if (bullet)
+        {
+            bullet.fire(enemy, player);
+            // Add collider between bullet and player
+            gameObject.physics.add.collider(player, bullet, playerHitCallback);
+        }
+    }
+  }else if(count >= 5){
+    if ((time - enemy.lastFired) > 1000)
+    {
+        enemy.lastFired = time;
+  
+        // Get bullet from bullets group
+        var bullet = enemyBullets.get().setActive(true).setVisible(true);
+  
+        if (bullet)
+        {
+            bullet.fire(enemy, player);
+            // Add collider between bullet and player
+            gameObject.physics.add.collider(player, bullet, playerHitCallback);
+        }
+    }
   }
-}
+
+  }
+
 
 // Ensures sprite speed doesnt exceed maxVelocity while update is called
 function constrainVelocity(sprite, maxVelocity)
@@ -371,9 +398,10 @@ function update (time, delta)
     reticle.body.velocity.y = player.body.velocity.y;
     //Checking if the game is over in the update, if it is currently over then we disable the keyboard input to stop the player from moving
     if(gameOver){
-        // disable enable keyboard input this.input.keyboard.enabled = false;
-        gameOver = false;
-        this.scene.restart();
+        this.input.keyboard.enabled = false;
+        gameOverText.setVisible(true);
+        enemiesKilled.setVisible(false);
+        pauseText.setVisible(true);
     }
 
   // Constrain velocity of player
@@ -383,5 +411,8 @@ function update (time, delta)
   constrainReticle(reticle);
 
   // Make enemy fire
-  enemyFire(enemy, player, time, this);
+  if(!gameOver){
+    enemyFire(enemy, player, time, this);
+  }
+
 }
